@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streaming
+spec:
+  selector:
+    matchLabels:
+      app: streaming
+
+  template:
+    metadata:
+      labels:
+        app: streaming
+    spec:
+      containers:
+        - name: streaming
+          image: wesleywillians/maratona2-streaming:latest
+          ports:
+            - containerPort: 80
+  
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: streaming-service
+  labels:
+    app: streaming-service
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+  selector:
+    app: streaming
+
+---
+
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: streaming-gateway
+spec:
+  selector:
+    istio: ingressgateway 
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:  
+    - "*"
+
+---
+  
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: streaming-vs
+spec:
+  hosts:
+  - "live.fullcycle.com.br"
+  gateways:
+  - streaming-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        port:
+          number: 80
+        host: streaming-service
